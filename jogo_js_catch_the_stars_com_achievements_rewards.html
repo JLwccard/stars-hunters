@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jogo Shadowling 8-Bit</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Press Start 2P', cursive;
+      background: linear-gradient(#0a0a1a, #000);
+      color: white;
+      overflow: hidden;
+    }
+    #gameCanvas {
+      display: block;
+      margin: auto;
+      background: radial-gradient(circle at center, #0a0a2a, #000);
+      border: 4px solid #fff;
+    }
+    #hud {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 12px;
+    }
+    #toolsInfo {
+      margin-top: 10px;
+      font-size: 10px;
+      line-height: 1.5em;
+    }
+    #startBtn {
+      display: block;
+      margin: 20px auto;
+      padding: 10px 20px;
+      font-family: 'Press Start 2P', cursive;
+      background: #222;
+      color: white;
+      border: 2px solid white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #startBtn:hover {
+      background: #444;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+  <div id="hud">
+    <div id="score">⭐ Estrelas: 0</div>
+    <div id="message">Pressione INICIAR!</div>
+    <div id="toolsInfo">
+      <p>🛡️ Escudo: Protege contra 1 hit</p>
+      <p>⚡ Turbo: Velocidade extra</p>
+      <p>❄️ Congelar: Para inimigos por tempo</p>
+    </div>
+  </div>
+  <button id="startBtn" onclick="startGame()">▶ Iniciar</button>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let player = { x: 400, y: 300, size: 20, color: "cyan", dx: 0, dy: 0 };
+    let shadowling = { x: 100, y: 100, size: 30, color: "red" };
+    let stars = [];
+    let tools = [];
+    let score = 0;
+    let gameRunning = false;
+
+    const rewardSound = new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
+    const deathSound = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+
+    function drawPlayer() {
+      ctx.fillStyle = player.color;
+      ctx.fillRect(player.x, player.y, player.size, player.size);
+    }
+
+    function drawShadowling() {
+      ctx.fillStyle = shadowling.color;
+      ctx.fillRect(shadowling.x, shadowling.y, shadowling.size, shadowling.size);
+      ctx.fillStyle = "white";
+      ctx.fillRect(shadowling.x + 5, shadowling.y + 5, 5, 5);
+      ctx.fillRect(shadowling.x + 20, shadowling.y + 5, 5, 5);
+      ctx.fillRect(shadowling.x + 10, shadowling.y + 20, 10, 3);
+    }
+
+    function spawnStar() {
+      stars.push({
+        x: Math.random() * (canvas.width - 10),
+        y: Math.random() * (canvas.height - 10),
+        size: 10
+      });
+    }
+
+    function drawStars() {
+      ctx.fillStyle = "yellow";
+      stars.forEach(star => {
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.size / 2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    function moveShadowling() {
+      if (shadowling.x < player.x) shadowling.x += 1;
+      if (shadowling.x > player.x) shadowling.x -= 1;
+      if (shadowling.y < player.y) shadowling.y += 1;
+      if (shadowling.y > player.y) shadowling.y -= 1;
+    }
+
+    function update() {
+      if (!gameRunning) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      player.x += player.dx;
+      player.y += player.dy;
+
+      drawPlayer();
+      moveShadowling();
+      drawShadowling();
+      drawStars();
+
+      // Checar colisão com estrelas
+      stars = stars.filter(star => {
+        const hit = player.x < star.x + star.size &&
+                    player.x + player.size > star.x &&
+                    player.y < star.y + star.size &&
+                    player.y + player.size > star.y;
+        if (hit) {
+          score++;
+          document.getElementById("score").textContent = "⭐ Estrelas: " + score;
+          rewardSound.play();
+          spawnStar();
+          return false;
+        }
+        return true;
+      });
+
+      // Checar colisão com Shadowling
+      if (player.x < shadowling.x + shadowling.size &&
+          player.x + player.size > shadowling.x &&
+          player.y < shadowling.y + shadowling.size &&
+          player.y + player.size > shadowling.y) {
+        gameRunning = false;
+        document.getElementById("message").textContent = "☠️ Você perdeu!";
+        deathSound.play();
+      }
+
+      requestAnimationFrame(update);
+    }
+
+    function startGame() {
+      score = 0;
+      player.x = 400;
+      player.y = 300;
+      shadowling.x = 100;
+      shadowling.y = 100;
+      stars = [];
+      spawnStar();
+      gameRunning = true;
+      document.getElementById("message").textContent = "Pegue as estrelas e fuja do Shadowling!";
+      update();
+    }
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "ArrowUp") player.dy = -2;
+      if (e.key === "ArrowDown") player.dy = 2;
+      if (e.key === "ArrowLeft") player.dx = -2;
+      if (e.key === "ArrowRight") player.dx = 2;
+    });
+    document.addEventListener("keyup", e => {
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") player.dy = 0;
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") player.dx = 0;
+    });
+  </script>
+</body>
+</html>
